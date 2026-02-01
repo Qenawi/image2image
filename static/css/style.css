@@ -1,0 +1,280 @@
+/* Custom styles for Image to Image Generator */
+
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #4f46e5;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #f8f9fa;
+}
+
+main {
+    flex: 1;
+}
+
+/* Navbar */
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Cards */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Image preview */
+#image-preview-container {
+    position: relative;
+}
+
+#image-preview {
+    max-width: 100%;
+}
+
+/* Generation progress */
+#generation-progress {
+    padding: 2rem;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 0.5rem;
+}
+
+/* Output section */
+#output-section img {
+    max-width: 100%;
+    border: 1px solid #dee2e6;
+}
+
+/* Session cards */
+.session-card .card-img-top {
+    transition: transform 0.3s;
+}
+
+.session-card:hover .card-img-top {
+    transform: scale(1.05);
+}
+
+/* Form controls */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
+}
+
+/* Status badge */
+#engine-status .badge {
+    font-size: 0.75rem;
+}
+
+/* Download alert */
+#download-alert {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Iterations grid */
+.iteration-card {
+    overflow: hidden;
+}
+
+.iteration-card img {
+    transition: transform 0.3s;
+}
+
+.iteration-card:hover img {
+    transform: scale(1.02);
+}
+
+/* Config cards */
+.config-active {
+    border-left: 4px solid #198754;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+
+    .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+    }
+}
+
+/* Loading animation */
+.loading-pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Image comparison slider (future feature) */
+.image-compare {
+    position: relative;
+    overflow: hidden;
+}
+
+.image-compare .input-image,
+.image-compare .output-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Tooltips */
+[data-bs-toggle="tooltip"] {
+    cursor: help;
+}
+
+/* Config details */
+details summary {
+    cursor: pointer;
+}
+
+details summary:hover {
+    color: var(--primary-color);
+}
+
+/* Prompt textarea */
+#prompt {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Active config indicator */
+.active-config-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    width: 12px;
+    height: 12px;
+    background: #198754;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+/* File input styling */
+input[type="file"]::file-selector-button {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    margin-right: 1rem;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: var(--secondary-color);
+}
+
+/* Disabled/unavailable model states */
+.model-unavailable {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.model-unavailable-card {
+    border-left: 4px solid #dc3545 !important;
+}
+
+/* Dimmed feature sections */
+.feature-disabled {
+    opacity: 0.5;
+    position: relative;
+}
+
+.feature-disabled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+}
+
+/* Select option styling for unavailable models */
+select option.model-not-downloaded {
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Config card with missing model */
+.config-missing-model {
+    border-color: #dc3545 !important;
+}
+
+.config-missing-model .card-header {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* Warning badge pulse animation */
+.badge-pulse {
+    animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* IP-Adapter unsupported indicator */
+.ip-adapter-unsupported {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border: 1px solid #f5c6cb;
+    border-radius: 0.25rem;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+/* Opacity utility for dimmed cards */
+.opacity-75 {
+    opacity: 0.75;
+}
+
+.opacity-50 {
+    opacity: 0.5;
+}
+
+/* Preset buttons */
+.preset-btn {
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+    transform: translateY(-2px);
+}
+
+.preset-btn.active {
+    transform: translateY(0);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.preset-btn small {
+    font-size: 0.7rem;
+    opacity: 0.8;
+}

@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ session.name }} - Img2Img{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-collection"></i> {{ session.name }}</h2>
+        <small class="text-muted">Created: {{ session.created_at|date:"M d, Y H:i" }}</small>
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'img2img_app:index' %}?session={{ session.id }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Continue Session
+        </a>
+        <a href="{% url 'img2img_app:session_delete' session.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Delete
+        </a>
+    </div>
+</div>
+
+{% if session.base_image %}
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h6 class="mb-0"><i class="bi bi-image"></i> Base Image</h6>
+    </div>
+    <div class="card-body text-center">
+        <img src="{{ session.base_image.url }}" class="img-fluid rounded" style="max-height: 300px;">
+    </div>
+</div>
+{% endif %}
+
+<h4 class="mb-3">Iterations ({{ iterations|length }})</h4>
+
+<div class="row">
+    {% for iteration in iterations %}
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Iteration {{ iteration.iteration_number }}</h6>
+                {% if iteration.generation_time %}
+                <span class="badge bg-info">{{ iteration.generation_time|floatformat:2 }}s</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if iteration.input_image %}
+                    <div class="col-6">
+                        <p class="text-muted small mb-1">Input</p>
+                        <img src="{{ iteration.input_image.url }}" class="img-fluid rounded">
+                    </div>
+                    {% endif %}
+                    <div class="{% if iteration.input_image %}col-6{% else %}col-12{% endif %}">
+                        <p class="text-muted small mb-1">Output</p>
+                        {% if iteration.output_image %}
+                        <img src="{{ iteration.output_image.url }}" class="img-fluid rounded">
+                        {% else %}
+                        <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 150px;">
+                            <span class="text-muted">No output</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <hr>
+
+                <p class="mb-2"><strong>Prompt:</strong></p>
+                <p class="text-muted">{{ iteration.prompt }}</p>
+
+                {% if iteration.config_snapshot %}
+                <details class="mt-2">
+                    <summary class="text-muted small">Configuration used</summary>
+                    <pre class="bg-light p-2 rounded mt-2 small">{{ iteration.config_snapshot|default:"{}"|pprint }}</pre>
+                </details>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <small class="text-muted">{{ iteration.created_at|date:"M d, Y H:i" }}</small>
+                {% if iteration.output_image %}
+                <a href="{{ iteration.output_image.url }}" class="btn btn-sm btn-outline-primary float-end" download>
+                    <i class="bi bi-download"></i>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="bi bi-layers display-1 text-muted"></i>
+            <h4 class="mt-3">No iterations yet</h4>
+            <p class="text-muted">Continue this session to add iterations.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="text-center mt-4">
+    <a href="{% url 'img2img_app:session_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Sessions
+    </a>
+</div>
+{% endblock %}

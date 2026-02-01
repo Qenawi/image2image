@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load model_filters %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Configuration - Img2Img{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-gear"></i>
+                    {% if object %}Edit Configuration{% else %}New Configuration{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="config-form">
+                    {% csrf_token %}
+
+                    <!-- Quality Presets -->
+                    {% if not object %}
+                    <div class="mb-4">
+                        <label class="form-label">Quick Presets</label>
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-success preset-btn" data-preset="low">
+                                <i class="bi bi-speedometer"></i> Fast
+                                <small class="d-block">Quick results</small>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary preset-btn" data-preset="mid">
+                                <i class="bi bi-speedometer2"></i> Balanced
+                                <small class="d-block">Recommended</small>
+                            </button>
+                            <button type="button" class="btn btn-outline-warning preset-btn" data-preset="high">
+                                <i class="bi bi-stars"></i> Quality
+                                <small class="d-block">Best output</small>
+                            </button>
+                        </div>
+                        <div class="form-text">Select a preset to auto-fill settings, or customize manually below</div>
+                    </div>
+                    <hr>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Name</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_model_id" class="form-label">Model</label>
+                        <select name="model_id" id="id_model_id" class="form-select">
+                            {% for model in available_models %}
+                            <option value="{{ model.id }}"
+                                    {% if object and object.model_id == model.id %}selected{% endif %}
+                                    {% if form.initial.model_id == model.id %}selected{% endif %}
+                                    {% if not model.downloaded %}class="text-muted" disabled{% endif %}
+                                    data-downloaded="{{ model.downloaded|yesno:'true,false' }}"
+                                    data-supports-ip-adapter="{{ model.supports_ip_adapter|yesno:'true,false' }}"
+                                    data-description="{{ model.description }}">
+                                {{ model.name }}{% if not model.downloaded %} (Not Downloaded){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+
+                        <!-- Model description -->
+                        <div id="model-description" class="alert alert-light mt-2 py-2">
+                            <i class="bi bi-info-circle"></i>
+                            <span id="model-description-text">Select a model to see its description</span>
+                        </div>
+
+                        <!-- Warning for unavailable models -->
+                        <div id="model-unavailable-warning" class="alert alert-warning mt-2 d-none">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Model Not Downloaded</strong>
+                            <p class="mb-0 small">This model is not available locally. You can still save this config, but generation will fail until the model is downloaded.</p>
+                        </div>
+
+                        <!-- IP-Adapter info -->
+                        <div id="ip-adapter-info" class="alert mt-2 d-none">
+                            <i class="bi bi-info-circle"></i>
+                            <span id="ip-adapter-message"></span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="id_strength" class="form-label">Strength</label>
+                            {{ form.strength }}
+                            <div class="form-text">0.0-1.0, higher = more change</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="id_guidance_scale" class="form-label">Guidance Scale</label>
+                            {{ form.guidance_scale }}
+                            <div class="form-text">1-20, how closely to follow prompt</div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="id_num_inference_steps" class="form-label">Inference Steps</label>
+                            {{ form.num_inference_steps }}
+                            <div class="form-text">20-100, more = better quality</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_negative_prompt" class="form-label">Negative Prompt</label>
+                        {{ form.negative_prompt }}
+                        <div class="form-text">What to avoid in generation</div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="id_is_active">
+                            Set as active configuration
+                        </label>
+                        {% if form.is_active.errors %}
+                        <div class="invalid-feedback d-block">{{ form.is_active.errors.0 }}</div>
+                        {% endif %}
+                        <div id="active-warning" class="form-text text-warning d-none">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Cannot set as active when model is not downloaded
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check" id="refiner-option">
+                        {{ form.use_refiner }}
+                        <label class="form-check-label" for="id_use_refiner">
+                            <i class="bi bi-stars"></i> Use SDXL Refiner (enhanced details)
+                        </label>
+                        <div class="form-text">
+                            Applies SDXL Refiner after SDXL Base for improved details. Only works with SDXL Base model.
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save
+                        </button>
+                        <a href="{% url 'img2img_app:config_list' %}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modelSelect = document.getElementById('id_model_id');
+    const warningDiv = document.getElementById('model-unavailable-warning');
+    const ipAdapterInfo = document.getElementById('ip-adapter-info');
+    const ipAdapterMessage = document.getElementById('ip-adapter-message');
+    const isActiveCheck = document.getElementById('id_is_active');
+    const activeWarning = document.getElementById('active-warning');
+    const modelDescriptionText = document.getElementById('model-description-text');
+
+    // Preset configurations
+    const presets = {
+        low: {
+            name: 'Fast Config',
+            strength: 0.6,
+            guidance_scale: 5.0,
+            num_inference_steps: 20,
+            negative_prompt: 'blurry, low quality',
+            description: 'Fast generation with acceptable quality. Good for quick iterations.'
+        },
+        mid: {
+            name: 'Balanced Config',
+            strength: 0.75,
+            guidance_scale: 7.5,
+            num_inference_steps: 50,
+            negative_prompt: 'blurry, low quality, distorted, deformed',
+            description: 'Recommended balance of speed and quality.'
+        },
+        high: {
+            name: 'Quality Config',
+            strength: 0.85,
+            guidance_scale: 10.0,
+            num_inference_steps: 80,
+            negative_prompt: 'blurry, low quality, distorted, deformed, ugly, bad anatomy, watermark, signature',
+            description: 'Best quality output. Slower but produces finest details.'
+        }
+    };
+
+    // Handle preset button clicks
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const presetKey = this.dataset.preset;
+            const preset = presets[presetKey];
+            if (!preset) return;
+
+            // Update button states
+            document.querySelectorAll('.preset-btn').forEach(b => {
+                b.classList.remove('active', 'btn-success', 'btn-primary', 'btn-warning');
+                b.classList.add('btn-outline-success', 'btn-outline-primary', 'btn-outline-warning');
+            });
+            this.classList.add('active');
+            this.classList.remove('btn-outline-success', 'btn-outline-primary', 'btn-outline-warning');
+            if (presetKey === 'low') this.classList.add('btn-success');
+            if (presetKey === 'mid') this.classList.add('btn-primary');
+            if (presetKey === 'high') this.classList.add('btn-warning');
+
+            // Fill form fields
+            document.getElementById('id_name').value = preset.name;
+            document.getElementById('id_strength').value = preset.strength;
+            document.getElementById('id_guidance_scale').value = preset.guidance_scale;
+            document.getElementById('id_num_inference_steps').value = preset.num_inference_steps;
+            document.getElementById('id_negative_prompt').value = preset.negative_prompt;
+
+            // Show toast
+            if (typeof showToast === 'function') {
+                showToast(`Applied "${preset.name}" preset: ${preset.description}`, 'info');
+            }
+        });
+    });
+
+    function updateModelStatus() {
+        const selected = modelSelect.options[modelSelect.selectedIndex];
+        if (!selected) return;
+
+        const isDownloaded = selected.dataset.downloaded === 'true';
+        const supportsIpAdapter = selected.dataset.supportsIpAdapter === 'true';
+        const description = selected.dataset.description;
+
+        // Show model description
+        if (description) {
+            modelDescriptionText.textContent = description;
+        }
+
+        // Show/hide download warning
+        if (!isDownloaded) {
+            warningDiv.classList.remove('d-none');
+            activeWarning.classList.remove('d-none');
+        } else {
+            warningDiv.classList.add('d-none');
+            activeWarning.classList.add('d-none');
+        }
+
+        // Show IP-Adapter compatibility info
+        ipAdapterInfo.classList.remove('d-none');
+        if (supportsIpAdapter) {
+            ipAdapterMessage.textContent = 'Supports character consistency (IP-Adapter).';
+            ipAdapterInfo.className = 'alert alert-success mt-2 py-2';
+        } else {
+            ipAdapterMessage.textContent = 'Does NOT support character consistency. Character features will be disabled.';
+            ipAdapterInfo.className = 'alert alert-warning mt-2 py-2';
+        }
+    }
+
+    modelSelect.addEventListener('change', updateModelStatus);
+    updateModelStatus(); // Initial check
+});
+</script>
+{% endblock %}

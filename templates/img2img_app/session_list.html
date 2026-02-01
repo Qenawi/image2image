@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Generation Sessions - Img2Img{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-collection"></i> Generation Sessions</h2>
+    {% if sessions %}
+    <button class="btn btn-outline-danger" id="clear-all-btn">
+        <i class="bi bi-trash"></i> Clear All
+    </button>
+    {% endif %}
+</div>
+
+{% if sessions %}
+<div class="row">
+    {% for session in sessions %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">{{ session.name|truncatechars:30 }}</h6>
+                <span class="badge bg-primary">{{ session.iteration_count }} iterations</span>
+            </div>
+            {% if session.latest_iteration and session.latest_iteration.output_image %}
+            <img src="{{ session.latest_iteration.output_image.url }}" class="card-img-top"
+                 style="height: 200px; object-fit: cover;">
+            {% elif session.base_image %}
+            <img src="{{ session.base_image.url }}" class="card-img-top"
+                 style="height: 200px; object-fit: cover;">
+            {% else %}
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center"
+                 style="height: 200px;">
+                <i class="bi bi-image display-4 text-light"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <small class="text-muted">
+                    Created: {{ session.created_at|date:"M d, Y H:i" }}
+                </small>
+            </div>
+            <div class="card-footer">
+                <div class="btn-group w-100">
+                    <a href="{% url 'img2img_app:session_detail' session.pk %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-eye"></i> View
+                    </a>
+                    <a href="{% url 'img2img_app:session_delete' session.pk %}" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% include 'img2img_app/pagination.html' %}
+
+{% else %}
+<div class="text-center py-5">
+    <i class="bi bi-collection display-1 text-muted"></i>
+    <h4 class="mt-3">No sessions yet</h4>
+    <p class="text-muted">Start generating images to create your first session.</p>
+    <a href="{% url 'img2img_app:index' %}" class="btn btn-primary">
+        <i class="bi bi-lightning"></i> Generate Images
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('clear-all-btn')?.addEventListener('click', async function() {
+    if (!confirm('Are you sure you want to delete ALL sessions? This cannot be undone.')) {
+        return;
+    }
+
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                     document.cookie.match(/csrftoken=([^;]+)/)?.[1];
+
+    try {
+        const response = await fetch('{% url "img2img_app:clear_sessions" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+            },
+        });
+        if (response.ok) {
+            location.reload();
+        }
+    } catch (error) {
+        console.error('Error clearing sessions:', error);
+    }
+});
+</script>
+{% endblock %}

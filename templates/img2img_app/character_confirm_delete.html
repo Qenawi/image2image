@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Character - Img2Img{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Delete Character
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Are you sure you want to delete the character <strong>"{{ object.name }}"</strong>?</p>
+                <p class="text-muted">
+                    This will delete {{ object.image_count }} reference image(s).
+                    This action cannot be undone.
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Delete Character
+                        </button>
+                        <a href="{% url 'img2img_app:character_list' %}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

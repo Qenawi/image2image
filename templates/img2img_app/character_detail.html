@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ character.name }} - Img2Img{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2><i class="bi bi-person"></i> {{ character.name }}</h2>
+        {% if character.trigger_word %}
+        <span class="badge bg-primary">{{ character.trigger_word }}</span>
+        {% endif %}
+    </div>
+    <div class="btn-group">
+        <a href="{% url 'img2img_app:index' %}?character={{ character.id }}" class="btn btn-success">
+            <i class="bi bi-lightning"></i> Generate with Character
+        </a>
+        <button id="enhance-btn" class="btn btn-warning" {% if character.image_count == 0 %}disabled{% endif %}>
+            <i class="bi bi-stars"></i> Enhance
+        </button>
+        <a href="{% url 'img2img_app:character_update' character.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <a href="{% url 'img2img_app:character_delete' character.pk %}" class="btn btn-outline-danger">
+            <i class="bi bi-trash"></i> Delete
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <!-- Character Info Card -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Character Info</h6>
+            </div>
+            <div class="card-body">
+                {% if character.description %}
+                <p>{{ character.description }}</p>
+                {% else %}
+                <p class="text-muted">No description provided.</p>
+                {% endif %}
+
+                <hr>
+
+                <dl class="mb-0">
+                    <dt>Images</dt>
+                    <dd>{{ character.image_count }} reference images</dd>
+                    <dt>Created</dt>
+                    <dd>{{ character.created_at|date:"M d, Y" }}</dd>
+                    <dt>Updated</dt>
+                    <dd>{{ character.updated_at|date:"M d, Y H:i" }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Add Image Card -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Add Images</h6>
+            </div>
+            <div class="card-body">
+                <form id="add-image-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <input type="file" name="image" class="form-control" accept="image/*" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" name="caption" class="form-control" placeholder="Caption (optional)">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_primary" class="form-check-input" id="is-primary-check">
+                        <label class="form-check-label" for="is-primary-check">Set as primary</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-upload"></i> Upload Image
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <!-- Images Grid -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-images"></i> Reference Images</h6>
+                <span class="badge bg-info">{{ images|length }} images</span>
+            </div>
+            <div class="card-body">
+                {% if images %}
+                <div class="row g-3">
+                    {% for img in images %}
+                    <div class="col-6 col-md-4">
+                        <div class="card h-100 {% if img.is_primary %}border-success{% endif %}">
+                            <div class="position-relative">
+                                <img src="{{ img.image.url }}" class="card-img-top"
+                                     style="height: 150px; object-fit: cover; cursor: pointer;"
+                                     data-bs-toggle="modal" data-bs-target="#imageModal"
+                                     data-image-url="{{ img.image.url }}"
+                                     data-image-caption="{{ img.caption }}">
+                                {% if img.is_primary %}
+                                <span class="position-absolute top-0 start-0 badge bg-success m-1">
+                                    <i class="bi bi-star-fill"></i> Primary
+                                </span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body p-2">
+                                {% if img.caption %}
+                                <small class="text-muted">{{ img.caption|truncatechars:30 }}</small>
+                                {% else %}
+                                <small class="text-muted">No caption</small>
+                                {% endif %}
+                            </div>
+                            <div class="card-footer p-2">
+                                <div class="btn-group btn-group-sm w-100">
+                                    {% if not img.is_primary %}
+                                    <button class="btn btn-outline-success set-primary-btn" data-id="{{ img.id }}">
+                                        <i class="bi bi-star"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-outline-danger delete-image-btn" data-id="{{ img.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-images display-4 text-muted"></i>
+                    <p class="mt-2 text-muted">No images yet. Upload some reference images to get started.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Enhanced Images Section -->
+        <div class="card shadow-sm mt-4" id="enhanced-images-card" style="display: none;">
+            <div class="card-header bg-warning d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-magic"></i> Enhanced Variations</h6>
+                <span class="badge bg-dark" id="enhanced-count">0 images</span>
+            </div>
+            <div class="card-body" id="enhanced-images-grid">
+                <!-- Enhanced images loaded via JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalCaption">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhancement Progress Modal -->
+<div class="modal fade" id="enhanceModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-magic"></i> Enhancing Character</h5>
+            </div>
+            <div class="modal-body">
+                <div id="enhance-progress">
+                    <p id="enhance-status-text" class="mb-3">Starting enhancement...</p>
+                    <div class="progress" style="height: 25px;">
+                        <div id="enhance-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                             role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <p class="text-muted small mt-2">
+                        Generating 4 variations for each reference image.
+                        This may take a few minutes.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'img2img_app:character_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Characters
+    </a>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const characterId = '{{ character.id }}';
+
+    // Image preview modal
+    document.querySelectorAll('[data-bs-target="#imageModal"]').forEach(img => {
+        img.addEventListener('click', function() {
+            document.getElementById('modalImage').src = this.dataset.imageUrl;
+            document.getElementById('imageModalCaption').textContent =
+                this.dataset.imageCaption || 'Image Preview';
+        });
+    });
+
+    // Add image form
+    document.getElementById('add-image-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        try {
+            const response = await fetch(`/characters/${characterId}/add-image/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
+
+            if (response.ok) {
+                location.reload();
+            } else {
+                const data = await response.json();
+                alert('Error: ' + (data.error || 'Failed to upload image'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+
+    // Delete image buttons
+    document.querySelectorAll('.delete-image-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            if (!confirm('Delete this image?')) return;
+
+            const imageId = this.dataset.id;
+            try {
+                const response = await fetch(`/characters/images/${imageId}/delete/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    location.reload();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    });
+
+    // Set primary image buttons
+    document.querySelectorAll('.set-primary-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const imageId = this.dataset.id;
+            try {
+                const response = await fetch(`/characters/images/${imageId}/set-primary/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                if (response.ok) {
+                    location.reload();
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+    });
+
+    // Enhancement functionality
+    const enhanceBtn = document.getElementById('enhance-btn');
+    let enhanceModal = null;
+
+    if (enhanceBtn) {
+        enhanceBtn.addEventListener('click', async function() {
+            enhanceModal = new bootstrap.Modal(document.getElementById('enhanceModal'));
+            enhanceModal.show();
+
+            try {
+                const response = await fetch(`/characters/${characterId}/enhance/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    pollEnhancementStatus(data.job_id);
+                } else {
+                    document.getElementById('enhance-status-text').textContent =
+                        'Error: ' + (data.error || 'Failed to start enhancement');
+                    document.getElementById('enhance-progress-bar').classList.remove('progress-bar-animated');
+                    document.getElementById('enhance-progress-bar').classList.add('bg-danger');
+                }
+            } catch (error) {
+                document.getElementById('enhance-status-text').textContent =
+                    'Error: ' + error.message;
+                document.getElementById('enhance-progress-bar').classList.remove('progress-bar-animated');
+                document.getElementById('enhance-progress-bar').classList.add('bg-danger');
+            }
+        });
+    }
+
+    async function pollEnhancementStatus(jobId) {
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch(`/enhancement-jobs/${jobId}/status/`);
+                const status = await response.json();
+
+                const progressBar = document.getElementById('enhance-progress-bar');
+                const statusText = document.getElementById('enhance-status-text');
+
+                progressBar.style.width = status.progress_percent + '%';
+                progressBar.textContent = status.progress_percent + '%';
+                statusText.textContent =
+                    `Generating: ${status.completed}/${status.total} variations`;
+
+                if (status.status === 'completed') {
+                    clearInterval(interval);
+                    statusText.textContent = 'Enhancement complete! Reloading...';
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-success');
+                    setTimeout(() => location.reload(), 1500);
+                } else if (status.status === 'failed') {
+                    clearInterval(interval);
+                    statusText.textContent = 'Error: ' + (status.error || 'Enhancement failed');
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.classList.add('bg-danger');
+                }
+            } catch (error) {
+                console.error('Error polling status:', error);
+            }
+        }, 2000);
+    }
+
+    // Load enhanced images on page load
+    async function loadEnhancedImages() {
+        try {
+            const response = await fetch(`/characters/${characterId}/enhanced-images/`);
+            const data = await response.json();
+
+            if (data.job_running && data.running_job_id) {
+                // Resume polling for running job
+                enhanceModal = new bootstrap.Modal(document.getElementById('enhanceModal'));
+                enhanceModal.show();
+                pollEnhancementStatus(data.running_job_id);
+            }
+
+            if (data.has_enhancements && data.enhanced_images.length > 0) {
+                const card = document.getElementById('enhanced-images-card');
+                const grid = document.getElementById('enhanced-images-grid');
+                const countBadge = document.getElementById('enhanced-count');
+
+                card.style.display = 'block';
+                countBadge.textContent = data.enhanced_images.length + ' images';
+
+                // Group images by variation type
+                const byType = {};
+                data.enhanced_images.forEach(img => {
+                    if (!byType[img.variation_type]) {
+                        byType[img.variation_type] = [];
+                    }
+                    byType[img.variation_type].push(img);
+                });
+
+                // Build HTML
+                let html = '';
+                const typeLabels = {
+                    'front_neutral': 'Front-facing, Neutral',
+                    'three_quarter_smile': '3/4 Angle, Smile',
+                    'side_profile': 'Side Profile',
+                    'different_lighting': 'Different Lighting'
+                };
+
+                for (const [type, images] of Object.entries(byType)) {
+                    html += `<h6 class="mt-3 mb-2">${typeLabels[type] || type}</h6>`;
+                    html += '<div class="row g-2">';
+                    images.forEach(img => {
+                        html += `
+                            <div class="col-4 col-md-3">
+                                <img src="${img.url}" class="img-fluid rounded"
+                                     style="cursor: pointer; height: 100px; width: 100%; object-fit: cover;"
+                                     data-bs-toggle="modal" data-bs-target="#imageModal"
+                                     onclick="document.getElementById('modalImage').src='${img.url}'; document.getElementById('imageModalCaption').textContent='${img.variation_label}';">
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+
+                grid.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('Error loading enhanced images:', error);
+        }
+    }
+
+    // Load enhanced images on page load
+    loadEnhancedImages();
+});
+</script>
+{% endblock %}

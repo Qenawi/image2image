@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if object %}Edit{% else %}Create{% endif %} Character - Img2Img{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-plus"></i>
+                    {% if object %}Edit Character{% else %}New Character{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="id_name" class="form-label">Name *</label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                        <div class="invalid-feedback d-block">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_description" class="form-label">Description</label>
+                        {{ form.description }}
+                        <div class="form-text">
+                            Describe the character's appearance, style, and distinctive features.
+                            This will be used to enhance prompts for more consistent results.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_trigger_word" class="form-label">Trigger Word</label>
+                        {{ form.trigger_word }}
+                        <div class="form-text">
+                            Optional unique word to use in prompts (e.g., "SARAH", "MYCHAR").
+                            This helps the model identify the character.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="id_images" class="form-label">
+                            <i class="bi bi-images"></i> Reference Images
+                        </label>
+                        {{ form.images }}
+                        <div class="form-text">
+                            Upload 3-10 reference images showing the character from different angles,
+                            expressions, and lighting conditions for best results. The first image
+                            will be set as the primary reference.
+                        </div>
+                    </div>
+
+                    {% if object and object.images.exists %}
+                    <div class="mb-4">
+                        <label class="form-label">Existing Images</label>
+                        <div class="row g-2">
+                            {% for img in object.images.all %}
+                            <div class="col-4 col-md-3">
+                                <div class="position-relative">
+                                    <img src="{{ img.image.url }}" class="img-thumbnail w-100"
+                                         style="height: 100px; object-fit: cover;">
+                                    {% if img.is_primary %}
+                                    <span class="position-absolute top-0 start-0 badge bg-success m-1">
+                                        Primary
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="form-text">Manage images on the character detail page.</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Save Character
+                        </button>
+                        <a href="{% url 'img2img_app:character_list' %}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tips Card -->
+        <div class="card mt-4 border-info">
+            <div class="card-header bg-info text-white">
+                <i class="bi bi-lightbulb"></i> Tips for Better Character Consistency
+            </div>
+            <div class="card-body">
+                <ul class="mb-0">
+                    <li>Upload clear, high-quality images with good lighting</li>
+                    <li>Include images from multiple angles (front, side, 3/4 view)</li>
+                    <li>Show different expressions and poses</li>
+                    <li>Keep backgrounds simple or varied</li>
+                    <li>Use consistent image quality across all references</li>
+                    <li>5-10 images typically give the best results</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

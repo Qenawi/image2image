@@ -1,0 +1,489 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Generate Images - Img2Img{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Main Generation Panel -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-magic"></i> Image Generation
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="generation-form" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <input type="hidden" name="session_id" id="session-id" value="">
+
+                    <!-- Character Selection -->
+                    <div class="mb-4" id="character-section">
+                        <label class="form-label">
+                            <i class="bi bi-person"></i> Character (optional)
+                            {% if active_model_info and not active_model_info.supports_ip_adapter %}
+                            <span class="badge bg-secondary ms-2"
+                                  data-bs-toggle="tooltip"
+                                  title="Current model ({{ active_model_info.name }}) doesn't support IP-Adapter">
+                                <i class="bi bi-x-circle"></i> Disabled
+                            </span>
+                            {% endif %}
+                        </label>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <select name="character" id="character-select" class="form-select"
+                                        {% if active_model_info and not active_model_info.supports_ip_adapter %}disabled{% endif %}>
+                                    <option value="">-- No Character --</option>
+                                    {% for char in characters %}
+                                    <option value="{{ char.id }}" data-images="{{ char.image_count }}"
+                                            data-description="{{ char.description|truncatechars:50 }}">
+                                        {{ char.name }} ({{ char.image_count }} images)
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    {% if active_model_info and not active_model_info.supports_ip_adapter %}
+                                    <span class="text-warning">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        Character feature unavailable with {{ active_model_info.name }}.
+                                        <a href="{% url 'img2img_app:config_list' %}">Switch model</a> to use characters.
+                                    </span>
+                                    {% else %}
+                                    Select a character for consistent appearance across generations
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <a href="{% url 'img2img_app:character_create' %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-plus"></i> New Character
+                                </a>
+                            </div>
+                        </div>
+                        <div id="character-preview" class="mt-2 d-none">
+                            <div class="alert alert-info py-2 mb-0">
+                                <i class="bi bi-info-circle"></i>
+                                <span id="character-info"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload / Preview -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="bi bi-image"></i> Base Image (optional)
+                        </label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="file" name="base_image" id="base-image-input"
+                                       class="form-control" accept="image/jpeg,image/png,image/webp">
+                                <div class="form-text">Upload an image to transform, or leave empty for text-to-image</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="image-preview-container" class="d-none">
+                                    <img id="image-preview" class="img-thumbnail" style="max-height: 200px;">
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="clear-image">
+                                        <i class="bi bi-x"></i> Clear
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Use Previous Output -->
+                    <div class="mb-3 form-check" id="use-previous-container" style="display: none;">
+                        <input type="checkbox" class="form-check-input" name="use_previous_output" id="use-previous">
+                        <label class="form-check-label" for="use-previous">
+                            <i class="bi bi-arrow-repeat"></i> Use previous output as input (iterative refinement)
+                        </label>
+                    </div>
+
+                    <!-- Prompt -->
+                    <div class="mb-4">
+                        <label for="prompt" class="form-label">
+                            <i class="bi bi-chat-text"></i> Prompt
+                        </label>
+                        <textarea name="prompt" id="prompt" class="form-control" rows="3"
+                                  placeholder="Describe the changes you want to apply or what you want to create..."
+                                  required></textarea>
+                        <div class="form-text">
+                            <span id="prompt-hint">Describe your image...</span>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+                            <i class="bi bi-lightning"></i> Generate
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Progress Indicator -->
+                <div id="generation-progress" class="mt-4 d-none">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                                    <span class="visually-hidden">Generating...</span>
+                                </div>
+                                <strong>Generating image...</strong>
+                            </div>
+                            <div class="progress mb-2" style="height: 25px;">
+                                <div id="generation-progress-bar"
+                                     class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                     role="progressbar"
+                                     style="width: 0%;"
+                                     aria-valuenow="0"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <p class="text-muted small mb-0" id="generation-progress-text">Starting...</p>
+                            <p class="text-muted small mb-0" id="progress-detail"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="card shadow-sm mt-4" id="output-section" style="display: none;">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-check-circle"></i> Generated Image
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <img id="output-image" class="img-fluid rounded" style="max-height: 600px;">
+                <div class="mt-3">
+                    <span class="badge bg-info" id="generation-time"></span>
+                    <span class="badge bg-secondary" id="iteration-number"></span>
+                    <span class="badge bg-primary d-none" id="character-badge"></span>
+                </div>
+                <div class="mt-3">
+                    <a id="download-btn" class="btn btn-outline-primary" download>
+                        <i class="bi bi-download"></i> Download
+                    </a>
+                    <button type="button" class="btn btn-outline-success" id="iterate-btn">
+                        <i class="bi bi-arrow-repeat"></i> Iterate on this
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Active Configuration -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-gear"></i> Active Configuration
+                    {% if active_config and active_model_info and not active_model_info.downloaded %}
+                    <span class="badge bg-danger ms-2">
+                        <i class="bi bi-exclamation-triangle"></i> Model Missing
+                    </span>
+                    {% endif %}
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if active_config %}
+                <dl class="mb-0">
+                    <dt>Name</dt>
+                    <dd>{{ active_config.name }}</dd>
+                    <dt>Model</dt>
+                    <dd>
+                        <small class="{% if active_model_info and not active_model_info.downloaded %}text-danger{% endif %}">
+                            {{ active_config.model_id }}
+                        </small>
+                        {% if active_model_info and not active_model_info.downloaded %}
+                        <div class="alert alert-danger mt-2 py-1 small">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Model not downloaded. Generation will fail.
+                        </div>
+                        {% endif %}
+                    </dd>
+                    <dt>Strength</dt>
+                    <dd>{{ active_config.strength }}</dd>
+                    <dt>Guidance Scale</dt>
+                    <dd>{{ active_config.guidance_scale }}</dd>
+                    <dt>Steps</dt>
+                    <dd>{{ active_config.num_inference_steps }}</dd>
+                    <dt>Character Support</dt>
+                    <dd>
+                        {% if active_model_info.supports_ip_adapter %}
+                        <span class="badge bg-success">
+                            <i class="bi bi-check"></i> Supported
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-x"></i> Not Supported
+                        </span>
+                        {% endif %}
+                    </dd>
+                </dl>
+                {% else %}
+                <p class="text-muted mb-0">No active configuration. Using defaults.</p>
+                {% endif %}
+                <a href="{% url 'img2img_app:config_list' %}" class="btn btn-sm btn-outline-secondary mt-2">
+                    <i class="bi bi-gear"></i> Manage Configs
+                </a>
+            </div>
+        </div>
+
+        <!-- Characters Quick Access -->
+        <div class="card shadow-sm mb-4 {% if active_model_info and not active_model_info.supports_ip_adapter %}opacity-50{% endif %}">
+            <div class="card-header bg-dark text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-people"></i> Characters
+                    {% if active_model_info and not active_model_info.supports_ip_adapter %}
+                    <span class="badge bg-secondary ms-1">Disabled</span>
+                    {% endif %}
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                {% if characters %}
+                <div class="list-group list-group-flush">
+                    {% for char in characters|slice:":5" %}
+                    <div class="list-group-item d-flex align-items-center">
+                        {% if char.primary_image %}
+                        <img src="{{ char.primary_image.image.url }}" class="rounded-circle me-2"
+                             style="width: 32px; height: 32px; object-fit: cover;">
+                        {% else %}
+                        <div class="rounded-circle bg-secondary me-2 d-flex align-items-center justify-content-center"
+                             style="width: 32px; height: 32px;">
+                            <i class="bi bi-person text-light"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <strong>{{ char.name }}</strong>
+                            <small class="text-muted d-block">{{ char.image_count }} images</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary select-character-btn"
+                                data-id="{{ char.id }}"
+                                {% if active_model_info and not active_model_info.supports_ip_adapter %}disabled{% endif %}>
+                            Use
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No characters yet.</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'img2img_app:character_list' %}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-people"></i> Manage Characters
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Sessions -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h6 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Sessions
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                {% if sessions %}
+                <ul class="list-group list-group-flush">
+                    {% for session in sessions %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <a href="{% url 'img2img_app:session_detail' session.pk %}" class="text-decoration-none">
+                                {{ session.name|truncatechars:20 }}
+                            </a>
+                            {% if session.character %}
+                            <small class="text-muted d-block">
+                                <i class="bi bi-person"></i> {{ session.character.name }}
+                            </small>
+                            {% endif %}
+                        </div>
+                        <span class="badge bg-primary">{{ session.iteration_count }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted p-3 mb-0">No sessions yet. Generate your first image!</p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'img2img_app:session_list' %}" class="btn btn-sm btn-outline-primary">
+                    View All Sessions
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('generation-form');
+    const generateBtn = document.getElementById('generate-btn');
+    const progress = document.getElementById('generation-progress');
+    const progressDetail = document.getElementById('progress-detail');
+    const outputSection = document.getElementById('output-section');
+    const outputImage = document.getElementById('output-image');
+    const downloadBtn = document.getElementById('download-btn');
+    const genTimeSpan = document.getElementById('generation-time');
+    const iterSpan = document.getElementById('iteration-number');
+    const characterBadge = document.getElementById('character-badge');
+    const sessionInput = document.getElementById('session-id');
+    const usePrevContainer = document.getElementById('use-previous-container');
+    const usePrevCheck = document.getElementById('use-previous');
+    const iterateBtn = document.getElementById('iterate-btn');
+    const imageInput = document.getElementById('base-image-input');
+    const imagePreview = document.getElementById('image-preview');
+    const previewContainer = document.getElementById('image-preview-container');
+    const clearImageBtn = document.getElementById('clear-image');
+    const characterSelect = document.getElementById('character-select');
+    const characterPreview = document.getElementById('character-preview');
+    const characterInfo = document.getElementById('character-info');
+    const promptHint = document.getElementById('prompt-hint');
+
+    // Initialize tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    // Character selection change
+    characterSelect.addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        if (this.value) {
+            const imageCount = option.dataset.images;
+            const description = option.dataset.description;
+            characterInfo.textContent = `Using ${imageCount} reference images. ${description}`;
+            characterPreview.classList.remove('d-none');
+            promptHint.textContent = 'Describe the scene/action for your character...';
+        } else {
+            characterPreview.classList.add('d-none');
+            promptHint.textContent = 'Describe your image...';
+        }
+    });
+
+    // Quick select character buttons
+    document.querySelectorAll('.select-character-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (this.disabled) return;
+            const charId = this.dataset.id;
+            characterSelect.value = charId;
+            characterSelect.dispatchEvent(new Event('change'));
+        });
+    });
+
+    // Image preview
+    imageInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                previewContainer.classList.remove('d-none');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    clearImageBtn.addEventListener('click', function() {
+        imageInput.value = '';
+        previewContainer.classList.add('d-none');
+    });
+
+    // Form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        generateBtn.disabled = true;
+        progress.classList.remove('d-none');
+        outputSection.style.display = 'none';
+
+        // Reset progress bar
+        const progressBar = document.getElementById('generation-progress-bar');
+        const progressText = document.getElementById('generation-progress-text');
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+        }
+        if (progressText) {
+            progressText.textContent = 'Starting...';
+        }
+
+        // Start polling for progress
+        if (typeof startGenerationPolling === 'function') {
+            startGenerationPolling();
+        }
+
+        const selectedChar = characterSelect.options[characterSelect.selectedIndex];
+        if (characterSelect.value) {
+            progressDetail.textContent = `Using character: ${selectedChar.text}`;
+        } else {
+            progressDetail.textContent = '';
+        }
+
+        const formData = new FormData(form);
+
+        try {
+            const response = await fetch('{% url "img2img_app:generate" %}', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                outputImage.src = data.output_url;
+                downloadBtn.href = data.output_url;
+                genTimeSpan.textContent = `${data.generation_time}s`;
+                iterSpan.textContent = `Iteration ${data.iteration_number}`;
+                sessionInput.value = data.session_id;
+
+                if (data.character_used) {
+                    characterBadge.textContent = data.character_used;
+                    characterBadge.classList.remove('d-none');
+                } else {
+                    characterBadge.classList.add('d-none');
+                }
+
+                outputSection.style.display = 'block';
+                usePrevContainer.style.display = 'block';
+            } else if (data.type === 'model_not_found') {
+                // Show model not found error with download instructions
+                showToast('Model not downloaded. Check the alert bar for download instructions.', 'danger');
+                showDownloadAlert(data.message || data.error);
+            } else {
+                alert('Error: ' + (data.error || 'Generation failed'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            generateBtn.disabled = false;
+            progress.classList.add('d-none');
+            // Hide progress and stop polling
+            if (typeof hideGenerationProgress === 'function') {
+                hideGenerationProgress();
+            }
+        }
+    });
+
+    // Iterate button
+    iterateBtn.addEventListener('click', function() {
+        usePrevCheck.checked = true;
+        document.getElementById('prompt').focus();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    });
+
+    // Check URL params for preselected character
+    const urlParams = new URLSearchParams(window.location.search);
+    const preselectedChar = urlParams.get('character');
+    if (preselectedChar && !characterSelect.disabled) {
+        characterSelect.value = preselectedChar;
+        characterSelect.dispatchEvent(new Event('change'));
+    }
+});
+</script>
+{% endblock %}
