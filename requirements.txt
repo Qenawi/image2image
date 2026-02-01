@@ -1,0 +1,35 @@
+# Django
+Django>=4.2,<5.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Hugging Face
+diffusers>=0.25.0
+transformers>=4.36.0
+accelerate>=0.25.0
+
+# PyTorch (install appropriate version for your system)
+# CPU: pip install torch torchvision
+# CUDA: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# MPS (Mac): pip install torch torchvision
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Optional: Memory optimization
+# xformers>=0.0.23  # Uncomment for CUDA systems
+
+# Safetensors for faster model loading
+safetensors>=0.4.0
+
+# Hugging Face Hub
+huggingface-hub>=0.20.0
+
+# Image processing for IP-Adapter
+opencv-python>=4.8.0
+
+# System monitoring
+psutil>=5.9.0
