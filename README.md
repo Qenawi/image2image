@@ -92,7 +92,8 @@ python manage.py runserver
 
 | Model | Description | Best For |
 |-------|-------------|----------|
-| SDXL Refiner 1.0 | High quality, detailed output | Final refinement |
+| SDXL Base 1.0 | Best quality, 1024x1024 resolution | Professional output |
+| SDXL Refiner 1.0 | Enhancement model (use after Base) | Final refinement |
 | Stable Diffusion 1.5 | Fast, good quality | Quick iterations |
 | Stable Diffusion 2.1 | Improved quality over 1.5 | General purpose |
 | InstructPix2Pix | Edit with natural language | Specific edits |
@@ -123,22 +124,23 @@ image-to-image/
 | `DEBUG` | Debug mode | True |
 | `ALLOWED_HOSTS` | Allowed hosts | localhost,127.0.0.1 |
 
-## Models 
-⏺ Simpler. Here are the commands using cache:                                                                                       
-                                                                                                                                    
-  # SDXL Base                                                                                                                       
-  hf download stabilityai/stable-diffusion-xl-base-1.0 --include='*.json' --include='*.txt' --include='*.safetensors'               
-  --exclude='*.bin' --exclude='*.fp16.*'                                                                                            
-                                                                                                                                    
-  # SDXL Inpainting                                                                                                                 
-  hf download diffusers/stable-diffusion-xl-1.0-inpainting-0.1 --include='*.json' --include='*.txt' --include='*.safetensors'       
-  --exclude='*.bin' --exclude='*.fp16.*'                                                                                            
-                                                                                                                                    
-  # IP-Adapter                                                                                                                      
-  hf download h94/IP-Adapter --include='sdxl_models/*' --include='models/*' --include='*.json' --exclude='*.bin'                    
-                                                                                                                                    
-  Cache location: ~/.cache/huggingface/hub/      
+## Downloading Models
 
+Models can be pre-downloaded using Hugging Face CLI:
+
+```bash
+# SDXL Base (recommended)
+huggingface-cli download stabilityai/stable-diffusion-xl-base-1.0
+
+# SDXL Refiner
+huggingface-cli download stabilityai/stable-diffusion-xl-refiner-1.0
+
+# Stable Diffusion 1.5
+huggingface-cli download runwayml/stable-diffusion-v1-5
+
+# IP-Adapter (for character consistency)
+huggingface-cli download h94/IP-Adapter
+```
 
 ## Tips
 
@@ -147,3 +149,7 @@ image-to-image/
 - Lower inference steps (20-30) for faster previews
 - Higher guidance scale (10-15) for more prompt adherence
 - Use negative prompts to avoid unwanted artifacts
+
+## License
+
+MIT License
